@@ -4,8 +4,19 @@ import os
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
 from PyQt5.QtGui import QPixmap
 
-# Готовим запрос.
-geocoder_request = f"http://static-maps.yandex.ru/1.x/?ll=135.746181,-27.483765&spn=20,20&l=map"
+
+def get_map(lat, lon, spn):
+    spn = ','.join(map(str, spn))
+    map_params = {
+        "ll": ",".join([lat, lon]),
+        "spn": spn,
+        "l": "map",
+        # "pt": ",".join([lat, lon])
+    }
+    map_api_server = "http://static-maps.yandex.ru/1.x/"
+    response = requests.get(map_api_server, params=map_params)
+
+    return response.content
 
 
 class ImageDisplayWidget(QWidget):
@@ -27,13 +38,13 @@ class ImageDisplayWidget(QWidget):
 
 
 # Выполняем запрос.
-response = requests.get(geocoder_request)
-if response:
+map_response = get_map('135.746181', '-27.483765', (20, 20))
+if map_response:
     # Запрос успешно выполнен, печатаем полученные данные.
 
     map_filename = "map.png"
     with open(map_filename, "wb") as file:
-        file.write(response.content)
+        file.write(map_response)
 
     app = QApplication(sys.argv)
 
@@ -44,10 +55,7 @@ if response:
 
     sys.exit(app.exec_())
 
-
     # os.remove(map_filename)
 else:
     # Произошла ошибка выполнения запроса. Обрабатываем http-статус.
     print("Ошибка выполнения запроса:")
-    print(geocoder_request)
-    print("Http статус:", response.status_code, "(", response.reason, ")")
