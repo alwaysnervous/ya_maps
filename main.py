@@ -23,13 +23,18 @@ def get_map(lat, lon, spn):
 
 
 class ImageDisplayWidget(QWidget):
-    def __init__(self, image_path):
+    def __init__(self):
         super().__init__()
         self.lat, self.lot = '135.746181', '-27.483765'
         self.spn = (20, 20)
+        self.layer_number = 0
+        self.map_response = get_map('135.746181', '-27.483765', (20, 20))
+        self.image_path = 'map.png'
+        self.map_view()
 
         # Загружаем изображение с помощью QPixmap
-        pixmap = QPixmap(image_path)
+
+        pixmap = QPixmap(self.image_path)
 
         # Создаем QLabel и устанавливаем в него изображение
         label = QLabel(self)
@@ -45,28 +50,25 @@ class ImageDisplayWidget(QWidget):
         # Добавляем кнопку в вертикальный layout
         layout.addWidget(button)
 
-        button.clicked.connect(switch_map_layer)
+        button.clicked.connect(lambda: switch_map_layer(self))
 
         self.setLayout(layout)
 
+    def map_view(self):
+        if self.map_response:
+            # Запрос успешно выполнен, печатаем полученные данные.
 
-# Выполняем запрос.
-map_response = get_map('135.746181', '-27.483765', (20, 20))
-if map_response:
-    # Запрос успешно выполнен, печатаем полученные данные.
+            with open(self.image_path, "wb") as file:
+                file.write(self.map_response)
 
-    map_filename = "map.png"
-    with open(map_filename, "wb") as file:
-        file.write(map_response)
+        else:
+            # Произошла ошибка выполнения запроса. Обрабатываем http-статус.
+            print("Ошибка выполнения запроса:")
 
+
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-
-    image_display_widget = ImageDisplayWidget(map_filename)
-
+    image_display_widget = ImageDisplayWidget()
     image_display_widget.show()
-    os.remove(map_filename)
-
     sys.exit(app.exec_())
-else:
-    # Произошла ошибка выполнения запроса. Обрабатываем http-статус.
-    print("Ошибка выполнения запроса:")
+
