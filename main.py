@@ -44,6 +44,7 @@ if response:
 
     sys.exit(app.exec_())
 
+
     # os.remove(map_filename)
 else:
     # Произошла ошибка выполнения запроса. Обрабатываем http-статус.
