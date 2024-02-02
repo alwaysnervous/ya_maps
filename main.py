@@ -1,8 +1,11 @@
 import requests
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap
+from switch_map_layer import switch_map_layer
+
+MAP_LAYER_NUMBER = 0
 
 
 def get_map(lat, lon, spn):
@@ -22,6 +25,8 @@ def get_map(lat, lon, spn):
 class ImageDisplayWidget(QWidget):
     def __init__(self, image_path):
         super().__init__()
+        self.lat, self.lot = '135.746181', '-27.483765'
+        self.spn = (20, 20)
 
         # Загружаем изображение с помощью QPixmap
         pixmap = QPixmap(image_path)
@@ -33,6 +38,14 @@ class ImageDisplayWidget(QWidget):
         # Создаем вертикальный layout и добавляем QLabel в него
         layout = QVBoxLayout(self)
         layout.addWidget(label)
+
+        # Создаем кнопку
+        button = QPushButton("Смена слоя карты", self)
+
+        # Добавляем кнопку в вертикальный layout
+        layout.addWidget(button)
+
+        button.clicked.connect(switch_map_layer)
 
         self.setLayout(layout)
 
@@ -54,8 +67,6 @@ if map_response:
     os.remove(map_filename)
 
     sys.exit(app.exec_())
-
-    # os.remove(map_filename)
 else:
     # Произошла ошибка выполнения запроса. Обрабатываем http-статус.
     print("Ошибка выполнения запроса:")
