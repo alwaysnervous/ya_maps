@@ -4,6 +4,7 @@ import os
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap
 from switch_map_layer import switch_map_layer
+from functions2 import *
 
 MAP_LAYER_NUMBER = 0
 
@@ -30,40 +31,25 @@ class ImageDisplayWidget(QWidget):
         self.layer_number = 0
         self.map_response = get_map('135.746181', '-27.483765', (20, 20))
         self.image_path = 'map.png'
-        self.map_view()
-
-        # Загружаем изображение с помощью QPixmap
-
         pixmap = QPixmap(self.image_path)
-
-        # Создаем QLabel и устанавливаем в него изображение
-        label = QLabel(self)
-        label.setPixmap(pixmap)
-
-        # Создаем вертикальный layout и добавляем QLabel в него
+        self.label = QLabel(self)
+        self.label.setPixmap(pixmap)
         layout = QVBoxLayout(self)
-        layout.addWidget(label)
-
-        # Создаем кнопку
+        layout.addWidget(self.label)
+        self.map_view()
         button = QPushButton("Смена слоя карты", self)
-
-        # Добавляем кнопку в вертикальный layout
         layout.addWidget(button)
-
         button.clicked.connect(lambda: switch_map_layer(self))
-
         self.setLayout(layout)
 
     def map_view(self):
         if self.map_response:
-            # Запрос успешно выполнен, печатаем полученные данные.
-
             with open(self.image_path, "wb") as file:
                 file.write(self.map_response)
-
         else:
-            # Произошла ошибка выполнения запроса. Обрабатываем http-статус.
             print("Ошибка выполнения запроса:")
+        pixmap = QPixmap(self.image_path)
+        self.label.setPixmap(pixmap)
 
 
 if __name__ == '__main__':
