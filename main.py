@@ -3,7 +3,7 @@ import sys
 import requests
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton, QLineEdit, QCheckBox
 
 
 def get_map(lat, lon, l, z, pts: list[tuple[float, float]] = None):
@@ -29,12 +29,17 @@ def get_coordinates(address):
     return coordinates
 
 
-def get_address(lat, lon):
+def get_address(lat, lon, include_postal_code=False):
     url = (f'http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&'
            f'geocode={lat},{lon}&format=json')
     data = requests.get(url).json()
     geo_object = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
     address = geo_object["metaDataProperty"]["GeocoderMetaData"]["text"]
+    if include_postal_code:
+        try:
+            address += ", " + geo_object["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
+        except KeyError:
+            address += ", Почтовый индекс отсутствует"
     return address
 
 
@@ -62,15 +67,15 @@ class ImageDisplayWidget(QWidget):
         self.search_line_edit = QLineEdit(self)
         layout.addWidget(self.search_line_edit)
 
-        self.search_button = QPushButton("Искать")
+        self.search_button = QPushButton("Искать", self)
         self.search_button.clicked.connect(self.search)
         layout.addWidget(self.search_button)
 
-        self.focus_button = QPushButton("Сделать фокус на картинке (ПОСЛЕ ВВОДА)")
+        self.focus_button = QPushButton("Сделать фокус на картинке (ПОСЛЕ ВВОДА)", self)
         self.focus_button.clicked.connect(self.focus)
         layout.addWidget(self.focus_button)
 
-        self.reset_search_result_button = QPushButton("Сброс поискового результата")
+        self.reset_search_result_button = QPushButton("Сброс поискового результата", self)
         self.reset_search_result_button.clicked.connect(self.reset_search_result)
         layout.addWidget(self.reset_search_result_button)
 
@@ -78,6 +83,9 @@ class ImageDisplayWidget(QWidget):
         self.address_line_edit.setPlaceholderText("Адрес найденого объекта")
         self.address_line_edit.setReadOnly(True)
         layout.addWidget(self.address_line_edit)
+
+        self.include_postal_code_checkbox = QCheckBox("Включать приписывание почтового индекса", self)
+        layout.addWidget(self.include_postal_code_checkbox)
 
         self.focus()
         self.map_view()
@@ -128,7 +136,7 @@ class ImageDisplayWidget(QWidget):
         self.z = 14
         self.lat, self.lot = get_coordinates(search_query)
         self.points = [[self.lat, self.lot]]
-        self.address_line_edit.setText(get_address(self.lat, self.lot))
+        self.address_line_edit.setText(get_address(self.lat, self.lot, self.include_postal_code_checkbox.isChecked()))
         self.map_view()
 
     def reset_search_result(self):
