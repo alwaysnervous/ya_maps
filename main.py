@@ -1,79 +1,125 @@
-import requests
 import sys
-import os
 
+import requests
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap
-from functions2 import *
-
-MAP_LAYER_NUMBER = 0
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton, QLineEdit
 
 
-def get_map(lat, lon, spn, l):
-    spn = ','.join(map(str, spn))
+def get_map(lat, lon, l, z, pts: tuple[tuple[float, float]] = None):
+    # spn = ','.join(map(str, spn))
     map_params = {
         "ll": ",".join([lat, lon]),
-        "spn": spn,
         "l": l,
-        # "pt": ",".join([lat, lon])
+        "z": z
     }
+    if pts:
+        map_params["pt"] = "~".join([",".join([str(coord) for coord in point]) for point in pts])
     map_api_server = "http://static-maps.yandex.ru/1.x/"
     response = requests.get(map_api_server, params=map_params)
 
     return response.content
 
 
+def get_coordinates(address):
+    url = (f'http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&geocode={address}&'
+           f'format=json')
+    data = requests.get(url).json()
+    coordinates = map(float, data['response']
+                                 ['GeoObjectCollection']
+                                 ['featureMember'][0]
+                                 ['GeoObject']
+                                 ['Point']
+                                 ['pos'].split(' '))
+    return coordinates
+
+
 class ImageDisplayWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.lat, self.lot = '135.746181', '-27.483765'
-        self.spn = [34, 34]
+        self.lat, self.lot = 135.746181, -27.483765
+        # self.spn = [34] * 2
         self.layer_number = 0
+        self.z = 4
         self.layers = ['map', 'sat', 'sat,skl']
         self.image_path = 'map.png'
 
         pixmap = QPixmap(self.image_path)
-        self.label = QLabel(self)
-        self.label.setPixmap(pixmap)
+        self.image_label = QLabel(self)
+        self.image_label.setPixmap(pixmap)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(self.label)
+        layout.addWidget(self.image_label)
 
+        self.switch_map_layer_button = QPushButton("Смена слоя карты", self)
+        self.switch_map_layer_button.clicked.connect(self.switch_map_layer)
+        layout.addWidget(self.switch_map_layer_button)
+
+        self.search_line_edit = QLineEdit(self)
+        layout.addWidget(self.search_line_edit)
+
+        self.search_button = QPushButton("Искать")
+        self.search_button.clicked.connect(self.search)
+        layout.addWidget(self.search_button)
+
+        self.focus_button = QPushButton("Сделать фокус на картинке (ПОСЛЕ ВВОДА)")
+        self.focus_button.clicked.connect(self.focus)
+        layout.addWidget(self.focus_button)
+
+        self.focus()
         self.map_view()
-
-        button = QPushButton("Смена слоя карты", self)
-        layout.addWidget(button)
-        button.clicked.connect(self.switch_map_layer)
-
         self.setLayout(layout)
+
+    def focus(self):
+        self.image_label.setFocus()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_PageUp:
-            self.spn = tuple(map(lambda x: max(x - 17, 0), self.spn))
+            self.z = min(self.z + 1, 21)
         elif event.key() == Qt.Key_PageDown:
-            self.spn = tuple(map(lambda x: min(x + 17, 68), self.spn))
+            self.z = max(self.z - 1, 0)
+        if event.key() == Qt.Key_Up:
+            self.lot = min(self.lot + 630 / (2 ** self.z), 80)
+        if event.key() == Qt.Key_Down:
+            self.lot = max(self.lot - 630 / (2 ** self.z), -80)
+        if event.key() == Qt.Key_Right:
+            self.lat = min(self.lat + 840 / (2 ** self.z), 180)
+        if event.key() == Qt.Key_Left:
+            self.lat = max(self.lat - 840 / (2 ** self.z), -180)
         self.map_view()
 
-    def map_view(self):
-        map_response = get_map('135.746181', '-27.483765', self.spn, self.layers[self.layer_number])
+    def map_view(self, points=None):
+        map_response = get_map(str(self.lat), str(self.lot), self.layers[self.layer_number], self.z, points)
         if map_response:
             with open(self.image_path, "wb") as file:
                 file.write(map_response)
         else:
             print("Ошибка выполнения запроса:")
         pixmap = QPixmap(self.image_path)
-        self.label.setPixmap(pixmap)
+        self.image_label.setPixmap(pixmap)
 
     def switch_map_layer(self):
         self.layer_number = (self.layer_number + 1) % 3
         self.map_view()
-        return
+
+    def search(self):
+        search_query = self.search_line_edit.text()
+        if not search_query:
+            return
+        self.z = 14
+        self.lat, self.lot = get_coordinates(search_query)
+        self.map_view(points=[(self.lat, self.lot)])
+        self.focus()
+
+
+def except_hook(cls, exception, traceback):
+    # Отлавливание исключений
+    sys.__excepthook__(cls, exception, traceback)
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     image_display_widget = ImageDisplayWidget()
     image_display_widget.show()
+    sys.excepthook = except_hook
     sys.exit(app.exec_())
-
