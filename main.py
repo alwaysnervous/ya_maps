@@ -85,6 +85,7 @@ class ImageDisplayWidget(QWidget):
         layout.addWidget(self.address_line_edit)
 
         self.include_postal_code_checkbox = QCheckBox("Включать приписывание почтового индекса", self)
+        self.include_postal_code_checkbox.clicked.connect(self.include_postal_code)
         layout.addWidget(self.include_postal_code_checkbox)
 
         self.focus()
@@ -142,6 +143,10 @@ class ImageDisplayWidget(QWidget):
     def reset_search_result(self):
         self.points = [[]]
         self.address_line_edit.clear()
+        self.map_view()
+
+    def include_postal_code(self):
+        self.address_line_edit.setText(get_address(self.lat, self.lot, self.include_postal_code_checkbox.isChecked()))
         self.map_view()
 
 
