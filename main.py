@@ -67,6 +67,10 @@ class ImageDisplayWidget(QWidget):
         self.focus_button.clicked.connect(self.focus)
         layout.addWidget(self.focus_button)
 
+        self.reset_search_result_button = QPushButton("Сброс поискового результата")
+        self.reset_search_result_button.clicked.connect(self.reset_search_result)
+        layout.addWidget(self.reset_search_result_button)
+
         self.focus()
         self.map_view()
         self.setLayout(layout)
@@ -77,17 +81,22 @@ class ImageDisplayWidget(QWidget):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_PageUp:
             self.z = min(self.z + 1, 21)
+            self.map_view()
         elif event.key() == Qt.Key_PageDown:
             self.z = max(self.z - 1, 0)
+            self.map_view()
         if event.key() == Qt.Key_Up:
             self.lot = min(self.lot + 630 / (2 ** self.z), 80)
+            self.map_view()
         if event.key() == Qt.Key_Down:
             self.lot = max(self.lot - 630 / (2 ** self.z), -80)
+            self.map_view()
         if event.key() == Qt.Key_Right:
             self.lat = min(self.lat + 840 / (2 ** self.z), 180)
+            self.map_view()
         if event.key() == Qt.Key_Left:
             self.lat = max(self.lat - 840 / (2 ** self.z), -180)
-        self.map_view()
+            self.map_view()
 
     def map_view(self):
         map_response = get_map(str(self.lat), str(self.lot), self.layers[self.layer_number], self.z, self.points)
@@ -98,6 +107,7 @@ class ImageDisplayWidget(QWidget):
             print("Ошибка выполнения запроса:")
         pixmap = QPixmap(self.image_path)
         self.image_label.setPixmap(pixmap)
+        self.focus()
 
     def switch_map_layer(self):
         self.layer_number = (self.layer_number + 1) % 3
@@ -109,9 +119,12 @@ class ImageDisplayWidget(QWidget):
             return
         self.z = 14
         self.lat, self.lot = get_coordinates(search_query)
-        self.points.append((self.lat, self.lot))
+        self.points = [[self.lat, self.lot]]
         self.map_view()
-        self.focus()
+
+    def reset_search_result(self):
+        self.points = [[]]
+        self.map_view()
 
 
 def except_hook(cls, exception, traceback):
