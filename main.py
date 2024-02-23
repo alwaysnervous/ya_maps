@@ -6,7 +6,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushButton, QLineEdit
 
 
-def get_map(lat, lon, l, z, pts: tuple[tuple[float, float]] = None):
+def get_map(lat, lon, l, z, pts: list[tuple[float, float]] = None):
     # spn = ','.join(map(str, spn))
     map_params = {
         "ll": ",".join([lat, lon]),
@@ -43,6 +43,7 @@ class ImageDisplayWidget(QWidget):
         self.z = 4
         self.layers = ['map', 'sat', 'sat,skl']
         self.image_path = 'map.png'
+        self.points = []
 
         pixmap = QPixmap(self.image_path)
         self.image_label = QLabel(self)
@@ -88,8 +89,8 @@ class ImageDisplayWidget(QWidget):
             self.lat = max(self.lat - 840 / (2 ** self.z), -180)
         self.map_view()
 
-    def map_view(self, points=None):
-        map_response = get_map(str(self.lat), str(self.lot), self.layers[self.layer_number], self.z, points)
+    def map_view(self):
+        map_response = get_map(str(self.lat), str(self.lot), self.layers[self.layer_number], self.z, self.points)
         if map_response:
             with open(self.image_path, "wb") as file:
                 file.write(map_response)
@@ -108,7 +109,8 @@ class ImageDisplayWidget(QWidget):
             return
         self.z = 14
         self.lat, self.lot = get_coordinates(search_query)
-        self.map_view(points=[(self.lat, self.lot)])
+        self.points.append((self.lat, self.lot))
+        self.map_view()
         self.focus()
 
 
