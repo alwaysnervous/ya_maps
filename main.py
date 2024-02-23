@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushBut
 
 
 def get_map(lat, lon, l, z, pts: list[tuple[float, float]] = None):
-    # spn = ','.join(map(str, spn))
     map_params = {
         "ll": ",".join([lat, lon]),
         "l": l,
@@ -17,28 +16,32 @@ def get_map(lat, lon, l, z, pts: list[tuple[float, float]] = None):
         map_params["pt"] = "~".join([",".join([str(coord) for coord in point]) for point in pts])
     map_api_server = "http://static-maps.yandex.ru/1.x/"
     response = requests.get(map_api_server, params=map_params)
-
     return response.content
 
 
 def get_coordinates(address):
-    url = (f'http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&geocode={address}&'
-           f'format=json')
+    url = (f'http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&'
+           f'geocode={address}&format=json')
     data = requests.get(url).json()
-    coordinates = map(float, data['response']
-                                 ['GeoObjectCollection']
-                                 ['featureMember'][0]
-                                 ['GeoObject']
-                                 ['Point']
-                                 ['pos'].split(' '))
+    geo_object = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+    coordinates = map(float, geo_object['Point']
+                                       ['pos'].split(' '))
     return coordinates
+
+
+def get_address(lat, lon):
+    url = (f'http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&'
+           f'geocode={lat},{lon}&format=json')
+    data = requests.get(url).json()
+    geo_object = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+    address = geo_object["metaDataProperty"]["GeocoderMetaData"]["text"]
+    return address
 
 
 class ImageDisplayWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.lat, self.lot = 135.746181, -27.483765
-        # self.spn = [34] * 2
         self.layer_number = 0
         self.z = 4
         self.layers = ['map', 'sat', 'sat,skl']
@@ -70,6 +73,11 @@ class ImageDisplayWidget(QWidget):
         self.reset_search_result_button = QPushButton("Сброс поискового результата")
         self.reset_search_result_button.clicked.connect(self.reset_search_result)
         layout.addWidget(self.reset_search_result_button)
+
+        self.address_line_edit = QLineEdit(self)
+        self.address_line_edit.setPlaceholderText("Адрес найденого объекта")
+        self.address_line_edit.setReadOnly(True)
+        layout.addWidget(self.address_line_edit)
 
         self.focus()
         self.map_view()
@@ -120,10 +128,12 @@ class ImageDisplayWidget(QWidget):
         self.z = 14
         self.lat, self.lot = get_coordinates(search_query)
         self.points = [[self.lat, self.lot]]
+        self.address_line_edit.setText(get_address(self.lat, self.lot))
         self.map_view()
 
     def reset_search_result(self):
         self.points = [[]]
+        self.address_line_edit.clear()
         self.map_view()
 
 
