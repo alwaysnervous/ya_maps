@@ -25,8 +25,7 @@ def get_coordinates(address):
            f'geocode={address}&format=json')
     data = requests.get(url).json()
     geo_object = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
-    coordinates = map(float, geo_object['Point']
-                                       ['pos'].split(' '))
+    coordinates = map(float, geo_object['Point']['pos'].split(' '))
     return coordinates
 
 
@@ -45,6 +44,14 @@ def get_address(lat, lon, include_postal_code=False):
         except KeyError:
             address += ", Почтовый индекс отсутствует"
     return address
+
+
+def get_organization(lat, lon):
+    url = (f'https://search-maps.yandex.ru/v1/?apikey=73961a13-a537-4463-a34a-bff0205a48e8&'
+           f'text=организации&lang=ru_RU&ll={lon},{lat}&type=biz&results=1&spn=0.45,0.45')
+    response = requests.get(url).json()
+    organization = response['features'][0]['properties']['CompanyMetaData']['name'] if response['features'] else ''
+    return organization
 
 
 class ImageDisplayWidget(QWidget):
@@ -101,15 +108,18 @@ class ImageDisplayWidget(QWidget):
         x = event.pos().x()
         y = event.pos().y()
         event_button = event.button()
+        clicked_lot = max(min(self.lot + (x - 300) * 1.4 / (2 ** self.z),
+                              180), -180)
+        clicked_lat = max(min(self.lat + (225 - y) * 1.4 * math.cos(math.radians(self.lat)) / (2 ** self.z),
+                              80), -80)
+        self.points = [(clicked_lot, clicked_lat, 'org')]
         if event_button == 1:
-            clicked_lot = max(min(self.lot + (x - 300) * 1.4 / (2 ** self.z),
-                                  180), -180)
-            clicked_lat = max(min(self.lat + (225 - y) * 1.4 * math.cos(math.radians(self.lat)) / (2 ** self.z),
-                                  80), -80)
-            self.points = [(clicked_lot, clicked_lat, 'org')]
             self.address_line_edit.setText(get_address(clicked_lat, clicked_lot,
                                                        self.include_postal_code_checkbox.isChecked()))
-            self.map_view()
+
+        elif event_button == 2:
+            self.address_line_edit.setText(get_organization(clicked_lat, clicked_lot))
+        self.map_view()
 
     def focus(self):
         self.image_label.setFocus()
