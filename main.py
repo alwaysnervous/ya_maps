@@ -48,7 +48,7 @@ def get_address(lat, lon, include_postal_code=False):
 
 def get_organization(lat, lon):
     url = (f'https://search-maps.yandex.ru/v1/?apikey=73961a13-a537-4463-a34a-bff0205a48e8&'
-           f'text=организации&lang=ru_RU&ll={lon},{lat}&type=biz&results=1&spn=0.45,0.45')
+           f'text=организации&lang=ru_RU&ll={lon},{lat}&type=biz&results=1&spn=0.0009,0.0009')
     response = requests.get(url).json()
     organization = response['features'][0]['properties']['CompanyMetaData']['name'] if response['features'] else ''
     return organization
