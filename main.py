@@ -1,5 +1,6 @@
 import sys
 
+import math
 import requests
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
@@ -8,7 +9,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QPushBut
 
 def get_map(lat, lon, l, z, pts: list[tuple[float, float]] = None):
     map_params = {
-        "ll": ",".join([lat, lon]),
+        "ll": ",".join([lon, lat]),
         "l": l,
         "z": z
     }
@@ -31,9 +32,12 @@ def get_coordinates(address):
 
 def get_address(lat, lon, include_postal_code=False):
     url = (f'http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&'
-           f'geocode={lat},{lon}&format=json')
+           f'geocode={lon},{lat}&format=json')
     data = requests.get(url).json()
-    geo_object = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+    try:
+        geo_object = data["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+    except IndexError:
+        return
     address = geo_object["metaDataProperty"]["GeocoderMetaData"]["text"]
     if include_postal_code:
         try:
@@ -46,18 +50,19 @@ def get_address(lat, lon, include_postal_code=False):
 class ImageDisplayWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.lat, self.lot = 135.746181, -27.483765
+        self.lat, self.lot = 55.75, 37.61
         self.layer_number = 0
-        self.z = 4
+        self.z = 10
         self.layers = ['map', 'sat', 'sat,skl']
         self.image_path = 'map.png'
         self.points = []
 
+        layout = QVBoxLayout(self)
+
         pixmap = QPixmap(self.image_path)
         self.image_label = QLabel(self)
         self.image_label.setPixmap(pixmap)
-
-        layout = QVBoxLayout(self)
+        self.image_label.mousePressEvent = self.getPos
         layout.addWidget(self.image_label)
 
         self.switch_map_layer_button = QPushButton("Смена слоя карты", self)
@@ -92,6 +97,20 @@ class ImageDisplayWidget(QWidget):
         self.map_view()
         self.setLayout(layout)
 
+    def getPos(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
+        event_button = event.button()
+        if event_button == 1:
+            clicked_lot = max(min(self.lot + (x - 300) * 1.4 / (2 ** self.z),
+                                  180), -180)
+            clicked_lat = max(min(self.lat + (225 - y) * 1.4 * math.cos(math.radians(self.lat)) / (2 ** self.z),
+                                  80), -80)
+            self.points = [(clicked_lot, clicked_lat, 'org')]
+            self.address_line_edit.setText(get_address(clicked_lat, clicked_lot,
+                                                       self.include_postal_code_checkbox.isChecked()))
+            self.map_view()
+
     def focus(self):
         self.image_label.setFocus()
 
@@ -100,19 +119,19 @@ class ImageDisplayWidget(QWidget):
             self.z = min(self.z + 1, 21)
             self.map_view()
         elif event.key() == Qt.Key_PageDown:
-            self.z = max(self.z - 1, 0)
+            self.z = max(self.z - 1, 3)
             self.map_view()
         if event.key() == Qt.Key_Up:
-            self.lot = min(self.lot + 630 / (2 ** self.z), 80)
+            self.lat = min(self.lat + 634 / (2 ** self.z), 80)
             self.map_view()
         if event.key() == Qt.Key_Down:
-            self.lot = max(self.lot - 630 / (2 ** self.z), -80)
+            self.lat = max(self.lat - 634 / (2 ** self.z), -80)
             self.map_view()
         if event.key() == Qt.Key_Right:
-            self.lat = min(self.lat + 840 / (2 ** self.z), 180)
+            self.lot = min(self.lot + 842 / (2 ** self.z), 180)
             self.map_view()
         if event.key() == Qt.Key_Left:
-            self.lat = max(self.lat - 840 / (2 ** self.z), -180)
+            self.lot = max(self.lot - 842 / (2 ** self.z), -180)
             self.map_view()
 
     def map_view(self):
@@ -135,18 +154,19 @@ class ImageDisplayWidget(QWidget):
         if not search_query:
             return
         self.z = 14
-        self.lat, self.lot = get_coordinates(search_query)
-        self.points = [[self.lat, self.lot]]
+        self.lot, self.lat = get_coordinates(search_query)
+        self.points = [(self.lat, self.lot, 'org')]
         self.address_line_edit.setText(get_address(self.lat, self.lot, self.include_postal_code_checkbox.isChecked()))
         self.map_view()
 
     def reset_search_result(self):
-        self.points = [[]]
+        self.points = [()]
         self.address_line_edit.clear()
         self.map_view()
 
     def include_postal_code(self):
-        self.address_line_edit.setText(get_address(self.lat, self.lot, self.include_postal_code_checkbox.isChecked()))
+        x, y = get_coordinates(self.address_line_edit.text())
+        self.address_line_edit.setText(get_address(y, x, self.include_postal_code_checkbox.isChecked()))
         self.map_view()
 
 
