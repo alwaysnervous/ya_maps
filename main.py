@@ -167,6 +167,11 @@ class ImageDisplayWidget(QWidget):
         self.lot, self.lat = get_coordinates(search_query)
         self.points = [(self.lat, self.lot, 'org')]
         self.address_line_edit.setText(get_address(self.lat, self.lot, self.include_postal_code_checkbox.isChecked()))
+        central_lot = max(min(self.lot,
+                              180), -180)
+        central_lat = max(min(self.lat,
+                              80), -80)
+        self.points = [(central_lot, central_lat, 'org')]
         self.map_view()
 
     def reset_search_result(self):
