@@ -46,12 +46,32 @@ def get_address(lat, lon, include_postal_code=False):
     return address
 
 
+def lonlat_distance(a, b):
+    degree_to_meters_factor = 111 * 1000
+    a_lon, a_lat = a
+    b_lon, b_lat = b
+
+    radians_latitude = math.radians((a_lat + b_lat) / 2)
+    lat_lon_factor = math.cos(radians_latitude)
+
+    dx = abs(a_lon - b_lon) * degree_to_meters_factor * lat_lon_factor
+    dy = abs(a_lat - b_lat) * degree_to_meters_factor
+
+    distance = math.sqrt(dx * dx + dy * dy)
+
+    return round(distance)
+
+
 def get_organization(lat, lon):
     url = (f'https://search-maps.yandex.ru/v1/?apikey=73961a13-a537-4463-a34a-bff0205a48e8&'
-           f'text=организации&lang=ru_RU&ll={lon},{lat}&type=biz&results=1&spn=0.0009,0.0009')
+           f'text=организации&lang=ru_RU&ll={lon},{lat}&type=biz')
     response = requests.get(url).json()
-    organization = response['features'][0]['properties']['CompanyMetaData']['name'] if response['features'] else ''
-    return organization
+    organization_coords = response['features'][0]['geometry']['coordinates']
+    organization_name = None
+    d = lonlat_distance(organization_coords, (lon, lat))  # расчёт расстояния
+    if d <= 50:
+        organization_name = response['features'][0]['properties']['CompanyMetaData']['name'] if response['features'] else ''
+    return organization_name
 
 
 class ImageDisplayWidget(QWidget):
